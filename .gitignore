@@ -24,3 +24,11 @@ target
 # Added by cargo
 
 /target
+
+# 
+.skills
+.claude
+AGENTS.md
+docs
+script
+example
