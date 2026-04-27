@@ -1,5 +1,6 @@
 mod cli;
 mod crawler;
+mod generator;
 mod template;
 
 fn main() {
