@@ -1,4 +1,5 @@
 mod cli;
+mod template;
 
 fn main() {
     let cli = cli::parse_args();
