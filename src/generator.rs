@@ -145,6 +145,7 @@ fn confirm_overwrite_with_io<R: BufRead, W: Write>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn sample_problem_data() -> ProblemData {
@@ -283,6 +284,34 @@ mod tests {
         assert_eq!(
             fs::read_to_string(directory.join("main.py")).unwrap(),
             template::get_source_code(Language::Python)
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn generated_rust_project_builds_successfully() {
+        let temp_dir = make_temp_dir("boj_gen_generator_build");
+        let data = sample_problem_data();
+
+        generate_in_dir_with_confirm(&temp_dir, 11066, &data, Language::Rust, |_| Ok(true))
+            .unwrap();
+
+        let directory = temp_dir.join("11066_파일_합치기");
+        let target_dir = temp_dir.join("cargo-target");
+        let output = Command::new("cargo")
+            .arg("build")
+            .arg("--quiet")
+            .current_dir(&directory)
+            .env("CARGO_TARGET_DIR", &target_dir)
+            .output()
+            .unwrap();
+
+        assert!(
+            output.status.success(),
+            "stdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
         );
 
         fs::remove_dir_all(temp_dir).unwrap();
