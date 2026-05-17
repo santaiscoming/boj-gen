@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+
+set -eu
+
+CHECKLIST_PATH="docs/plans/2026-04-27-phased-implementation-checklist.md"
+
+if [ "${SKIP_PHASE_CHECK:-0}" = "1" ]; then
+    echo "warning: SKIP_PHASE_CHECK=1 로 phase 체크 검사를 우회합니다." >&2
+    exit 0
+fi
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "error: git 저장소에서만 phase 체크를 수행할 수 있습니다." >&2
+    exit 1
+fi
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if [ -z "$staged_files" ]; then
+    exit 0
+fi
+
+if ! printf '%s\n' "$staged_files" | grep -q '^src/'; then
+    exit 0
+fi
+
+if [ ! -f "$CHECKLIST_PATH" ]; then
+    echo "error: phase 체크리스트 파일을 찾을 수 없습니다: $CHECKLIST_PATH" >&2
+    exit 1
+fi
+
+has_incomplete_phase="$(
+    awk '
+        /^## Phase [0-9]+\./ {
+            in_phase = 1
+            next
+        }
+        /^## / {
+            in_phase = 0
+        }
+        in_phase && /^- \[ \]/ {
+            print "1"
+            exit
+        }
+    ' "$CHECKLIST_PATH"
+)"
+
+if [ -z "$has_incomplete_phase" ]; then
+    exit 0
+fi
+
+if printf '%s\n' "$staged_files" | grep -qx "$CHECKLIST_PATH"; then
+    exit 0
+fi
+
+cat >&2 <<'EOF'
+error: src/ 하위 변경이 있는데 미완료 phase가 남아 있습니다.
+error: 커밋 전에 docs/plans/2026-04-27-phased-implementation-checklist.md 를 함께 반영하세요.
+error: 정말 우회해야 하면 이번 1회에 한해 SKIP_PHASE_CHECK=1 git commit ... 을 사용하세요.
+EOF
+
+exit 1
